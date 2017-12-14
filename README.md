@@ -45,10 +45,10 @@ type Book struct {
 
 // Instantiate your struct
 book := &Book{
-		Title:     "The Martian",
-		Author:    "Andy Weir",
-		CreatedAt: time.Now(),
-		CreatedBy: "TestInsert",
+	Title:     "The Martian",
+	Author:    "Andy Weir",
+	CreatedAt: time.Now(),
+	CreatedBy: "TestInsert",
 }
 
 // Perform an insert using papergres
@@ -107,12 +107,10 @@ func (t *testLogger) Debugf(format string, args ...interface{}) {
 		fmt.Printf(format, args...)
 	}
 }
-
-
 ```
 
 Example of the sql logging 
-`
+```
 == POSTGRES QUERY ==
         Query:
         INSERT INTO paper.character (
@@ -177,4 +175,4 @@ RowsAffected:  0
 RowsReturned:  4
 ExecutionTime: 5.549ms
 Error: <nil>
-`
+```
