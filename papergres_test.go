@@ -3,6 +3,7 @@ package papergres
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"testing"
 	"time"
 
@@ -47,7 +48,8 @@ func setup() error {
 	Log = &testLogger{}
 	teardown()
 
-	r := defdb().CreateDatabase()
+	db := NewConnection(testDbURL, "papergres-test", SSLDisable).NewDatabase()
+	r := db.CreateDatabase()
 	if r.Err != nil {
 		fmt.Printf("failed to create database: %s", r.Err.Error())
 		return r.Err
@@ -60,7 +62,7 @@ func setup() error {
 		return err
 	}
 
-	r = defdb().Query(string(createScripts)).ExecNonQuery()
+	r = db.Query(string(createScripts)).ExecNonQuery()
 	if r.Err != nil {
 		fmt.Printf("failed to run create scripts: %s", r.Err.Error())
 		return r.Err
@@ -71,7 +73,8 @@ func setup() error {
 
 func teardown() error {
 	sql := "DROP SCHEMA IF EXISTS paper CASCADE;"
-	r := defdb().Query(sql).ExecNonQuery()
+	db := NewConnection(testDbURL, "papergres-test", SSLDisable).NewDatabase()
+	r := db.Query(sql).ExecNonQuery()
 	if r.Err != nil {
 		fmt.Printf("drop error: %s", r.Err.Error())
 		return r.Err
@@ -80,16 +83,36 @@ func teardown() error {
 	return nil
 }
 
-var testDbURL = "postgres://papergres:papergres@localhost:5432/paperchain"
+var testDbURL = "postgres://postgres:postgres@localhost:5432/paperchain"
 
 func TestCanCreateConnectionObjectFromDatabaseUrl(t *testing.T) {
 	dbURL := "postgres://papergresUserName:papergresPassWord@myServer:5432/myDatabase"
-	conn := NewConnection(dbURL, "papergres_tests")
+	conn := NewConnection(dbURL, "papergres_tests", SSLDisable)
 	assert.Equal(t, "papergresUserName", conn.User, "Not equal")
 	assert.Equal(t, "papergresPassWord", conn.Password, "Not equal")
 	assert.Equal(t, "myDatabase", conn.Database, "Not equal")
 	assert.Equal(t, "myServer", conn.Host, "Not equal")
 	assert.Equal(t, "5432", conn.Port, "Not equal")
+}
+
+func TestCanCreateValidDatabaseObjectFromConnection(t *testing.T) {
+	dbURL := "postgres://papergresUserName:papergresPassWord@myServer:5432/myDatabase"
+	conn := NewConnection(dbURL, "papergres_tests", SSLDisable)
+	db := conn.NewDatabase()
+	assert.NotNil(t, db, "Nil")
+	assert.NotNil(t, db.Connection, "Nil")
+
+	connString := db.ConnectionString()
+	assert.True(t, connString != "", "Empty connString")
+}
+
+func TestCanCreateValidSchemaObjectFromDatbase(t *testing.T) {
+	dbURL := "postgres://papergresUserName:papergresPassWord@myServer:5432/myDatabase"
+	conn := NewConnection(dbURL, "papergres_tests", SSLDisable)
+	db := conn.NewDatabase()
+	schema := db.Schema("testSchema")
+	assert.NotNil(t, schema, "Nil")
+	assert.Equal(t, "testSchema", schema.Name, "Schema name not same")
 }
 
 func TestInsert(t *testing.T) {
@@ -102,21 +125,27 @@ func TestInsert(t *testing.T) {
 		CreatedBy: "TestInsert",
 	}
 
-	// db := NewConnection(testDbURL, "papergres_tests").NewDatabase()
+	conn := NewConnection(testDbURL, "papergres_tests", SSLDisable)
+	db := conn.NewDatabase()
 
 	// test out single insert
-	q := defdb().InsertQuery(book)
-	// q := schema().InsertQuery(book)
+	// q := defdb().InsertQuery(book)
+	q := db.Schema("paper").GenerateInsert(book)
 	assert.NotEmpty(t, q.SQL, "empty SQL")
 
-	res := schema().Insert(book)
+	// res := schema().Insert(book)
+	res := db.Schema("paper").Insert(book)
+	if res.Err != nil {
+		log.Fatalln(res.Err.Error())
+	}
 	bookid := res.LastInsertId.ID
 	assert.Nil(t, res.Err, "insert error")
 	assert.Equal(t, PrimaryKey(6), bookid, "wrong LastInsertId")
 
 	var martian Book
 	sql := "SELECT * FROM paper.book WHERE book_id = $1"
-	res = defdb().Query(sql, bookid).ExecSingle(&martian)
+	// res = defdb().Query(sql, bookid).ExecSingle(&martian)
+	res = db.Query(sql, bookid).ExecSingle(&martian)
 	assert.Nil(t, res.Err, "book select")
 	assert.True(t, martian.CreatedAt != defaultTime, "book created at")
 	assert.Equal(t, "The Martian", martian.Title, "book title")
@@ -155,7 +184,8 @@ func TestInsert(t *testing.T) {
 			CreatedBy:   "TestInsert",
 		},
 	}
-	r, err := schema().InsertAll(characters)
+	// r, err := schema().InsertAll(characters)
+	r, err := db.Schema("paper").InsertAll(characters)
 	assert.Nil(t, err, "err InsertAll")
 	assert.Equal(t, len(characters), len(r), "result length")
 
@@ -165,7 +195,7 @@ func TestInsert(t *testing.T) {
 
 	sql = "SELECT * FROM paper.character WHERE book_id = $1;"
 	var martianChars []Character
-	defdb().Query(sql, martian.BookId).ExecAll(&martianChars)
+	db.Query(sql, martian.BookId).ExecAll(&martianChars)
 	assert.Equal(t, len(characters), len(martianChars), "martianChars incorrect len")
 	for _, c := range martianChars {
 		found := false
@@ -188,40 +218,40 @@ type testDatabase struct {
 	*Domain
 }
 
-func schema() *Schema {
-	return defdb().Schema("paper")
-}
+// func schema() *Schema {
+// 	return defdb().Schema("paper")
+// }
 
-func defdb() *Database {
-	return db(conn()).Database()
-}
+// func defdb() *Database {
+// 	return db(conn()).Database()
+// }
 
-func db(c Connection) *testDatabase {
-	return &testDatabase{
-		domain(c),
-	}
-}
+// func db(c Connection) *testDatabase {
+// 	return &testDatabase{
+// 		domain(c),
+// 	}
+// }
 
-func (db *testDatabase) GetDomain() *Domain {
-	return db.Domain
-}
+// func (db *testDatabase) GetDomain() *Domain {
+// 	return db.Domain
+// }
 
-func domain(c Connection) *Domain {
-	return c.NewDatabase().NewDomain("papergres", "papergres", "paper")
-}
+// func domain(c Connection) *Domain {
+// 	return c.NewDatabase().NewDomain("papergres", "papergres", "paper")
+// }
 
-func conn() Connection {
-	return Connection{
-		Database: "papergres",
-		User:     "postgres",
-		Password: "postgres",
-		Host:     "localhost",
-		Port:     "5432",
-		AppName:  "papergres",
-		Timeout:  0,
-		SSLMode:  "disable",
-	}
-}
+// func conn() Connection {
+// 	return Connection{
+// 		Database: "papergres",
+// 		User:     "postgres",
+// 		Password: "postgres",
+// 		Host:     "localhost",
+// 		Port:     "5432",
+// 		AppName:  "papergres",
+// 		Timeout:  0,
+// 		SSLMode:  "disable",
+// 	}
+// }
 
 type testLogger struct{}
 

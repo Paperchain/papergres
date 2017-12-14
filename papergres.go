@@ -18,11 +18,12 @@ import (
 )
 
 var (
-	ErrNoDriver        = errors.New("No database driver loaded")
-	ErrMultipleDrivers = errors.New("More than 1 data driver loaded")
-	ErrUnableToOpenDB  = errors.New("Unable to open sql database")
-
+	// Log is the way to log the scripting activity happening from the library to the database
 	Log Logger
+
+	errNoDriver        = errors.New("No database driver loaded")
+	errMultipleDrivers = errors.New("More than 1 data driver loaded")
+	errUnableToOpenDB  = errors.New("Unable to open sql database")
 
 	sqlDriver string
 
@@ -104,6 +105,22 @@ type Logger interface {
 	Debugf(format string, args ...interface{})
 }
 
+func logDebug(args ...interface{}) {
+	if Logger.Debug == nil {
+		return
+	}
+
+	Log.Debug(args)
+}
+
+func logDebugf(format string, args ...interface{}) {
+	if Logger.Debugf == nil {
+		return
+	}
+
+	Log.Debug(format, args)
+}
+
 // Schema holds the schema to query along with the Database
 type Schema struct {
 	Name     string
@@ -151,16 +168,21 @@ type RowsAffected struct {
 	Err   error
 }
 
-// New creates a new Database object
+// NewDatabase creates a new Database object
 func (conn Connection) NewDatabase() *Database {
 	return &Database{
 		conn: &conn,
 	}
 }
 
-func NewConnection(databaseUrl string, appName string) Connection {
-	regex := regexp.MustCompile("(?i)^postgres://(?:([^:@]+):([^@]*)@)?([^@/:]+):(\\d+)/(.*)$")
-	matches := regex.FindStringSubmatch(databaseUrl)
+const (
+	databaseURLRegex = "(?i)^postgres://(?:([^:@]+):([^@]*)@)?([^@/:]+):(\\d+)/(.*)$"
+)
+
+// NewConnection creates and returns the Connection object to the postgres server
+func NewConnection(databaseURL string, appName string, sslMode SSLMode) Connection {
+	regex := regexp.MustCompile(databaseURLRegex)
+	matches := regex.FindStringSubmatch(databaseURL)
 
 	conn := Connection{
 		User:     matches[1],
@@ -169,6 +191,7 @@ func NewConnection(databaseUrl string, appName string) Connection {
 		Port:     matches[4],
 		Database: matches[5],
 		AppName:  appName,
+		SSLMode:  sslMode,
 	}
 
 	return conn
@@ -440,9 +463,9 @@ func (db *Database) InsertAll(objs interface{}) ([]*Result, error) {
 	return db.Schema("public").InsertAll(objs)
 }
 
-// InsertQuery generates an insert query for the given object
-func (db *Database) InsertQuery(obj interface{}) *Query {
-	return db.Schema("public").InsertQuery(obj)
+// GenerateInsert generates an insert query for the given object
+func (db *Database) GenerateInsert(obj interface{}) *Query {
+	return db.Schema("public").GenerateInsert(obj)
 }
 
 // Insert inserts the passed in object
@@ -452,8 +475,8 @@ func (s *Schema) Insert(obj interface{}) *Result {
 	return s.Database.Query(sql, args...).Exec()
 }
 
-// InsertQuery generates the insert query for the given object
-func (s *Schema) InsertQuery(obj interface{}) *Query {
+// GenerateInsert generates the insert query for the given object
+func (s *Schema) GenerateInsert(obj interface{}) *Query {
 	sql := insertSQL(obj, s.Name)
 	args := insertArgs(obj)
 	q := s.Database.Query(sql, args...)
@@ -478,7 +501,7 @@ func (s *Schema) InsertAll(objs interface{}) ([]*Result, error) {
 	}
 
 	// now turn the objs into a repeat query and exec
-	return s.InsertQuery(slice[0]).Repeat(len(slice),
+	return s.GenerateInsert(slice[0]).Repeat(len(slice),
 		func(i int) (dest interface{}, args []interface{}) {
 			args = insertArgs(slice[i])
 			return
@@ -730,8 +753,8 @@ func open(conn string) *sqlx.DB {
 
 	db, err := sqlx.Open(getDriver(), conn)
 	if err != nil {
-		Log.Debug(err, conn)
-		panic(ErrUnableToOpenDB)
+		logDebug(err, conn)
+		panic(errUnableToOpenDB)
 	}
 	openDBs[conn] = db
 	return db
@@ -744,10 +767,10 @@ func getDriver() string {
 
 	drivers := sql.Drivers()
 	if len(drivers) == 0 {
-		panic(ErrNoDriver)
+		panic(errNoDriver)
 	} else if len(drivers) > 1 {
-		Log.Debug(drivers)
-		panic(ErrMultipleDrivers)
+		logDebug(drivers)
+		panic(errMultipleDrivers)
 	}
 
 	sqlDriver = drivers[0]
@@ -768,7 +791,7 @@ func logQuery(q *Query, res *Result, start time.Time, logArgs ...interface{}) {
 		}
 	}
 
-	Log.Debug(l)
+	logDebug(l)
 }
 
 func mergeErrs(errs []error) error {
