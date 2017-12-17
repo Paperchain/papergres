@@ -106,7 +106,7 @@ type Logger interface {
 }
 
 func logDebug(args ...interface{}) {
-	if Logger.Debug == nil {
+	if Log == nil || Log.Debug == nil {
 		return
 	}
 
