@@ -44,6 +44,46 @@ func TestSetupTeardown(t *testing.T) {
 	}
 }
 
+var (
+	book = &Book{
+		Title:     "The Martian",
+		Author:    "Andy Weir",
+		CreatedAt: time.Now(),
+		CreatedBy: "TestInsert",
+	}
+
+	characters = []Character{
+		Character{
+			BookId:      6,
+			Name:        "Mark Watney",
+			Description: "Our comical hero who is stranded on Mars",
+			CreatedAt:   time.Now(),
+			CreatedBy:   "TestInsert",
+		},
+		Character{
+			BookId:      6,
+			Name:        "Venkat Kapoor",
+			Description: "Sleep deprived MFIC at NASA",
+			CreatedAt:   time.Now(),
+			CreatedBy:   "TestInsert",
+		},
+		Character{
+			BookId:      6,
+			Name:        "Rich Purnell",
+			Description: "A steely-eyed missle man",
+			CreatedAt:   time.Now(),
+			CreatedBy:   "TestInsert",
+		},
+		Character{
+			BookId:      6,
+			Name:        "Mitch Henderson",
+			Description: "Sean Bean doesn't die in this movie",
+			CreatedAt:   time.Now(),
+			CreatedBy:   "TestInsert",
+		},
+	}
+)
+
 func setup() error {
 	Log = &testLogger{}
 	teardown()
@@ -115,15 +155,44 @@ func TestCanCreateValidSchemaObjectFromDatbase(t *testing.T) {
 	assert.Equal(t, "testSchema", schema.Name, "Schema name not same")
 }
 
+func TestCanGenerateValidInsertSql(t *testing.T) {
+	// setup()
+	sql := insertSQL(book, "paper")
+	fmt.Println(sql)
+}
+
+func TestCanGenerateValidInsertMultipleSql(t *testing.T) {
+	// setup()
+	sql, args := insertMultipleSQL(characters, "paper")
+	fmt.Println(sql)
+	fmt.Printf("%+v\n", args)
+}
+
+func TestCanInsertAll(t *testing.T) {
+	setup()
+	len := 1000
+
+	books := make([]Book, len)
+	for i := 0; i < len; i++ {
+		books[i] = Book{
+			Author:    fmt.Sprintf("author-%d", i),
+			Title:     fmt.Sprintf("title-%d", i),
+			CreatedAt: time.Now(),
+			CreatedBy: "papergres-test",
+		}
+	}
+
+	conn := NewConnection(testDbURL, "papergres_tests", SSLDisable)
+	db := conn.NewDatabase()
+
+	r, err := db.Schema("paper").InsertAll(books)
+	assert.Nil(t, err, "err InsertAll")
+	assert.Equal(t, len, int(r.RowsAffected.Count), "result length")
+}
+
 func TestInsert(t *testing.T) {
 	setup()
 	var defaultTime time.Time
-	book := &Book{
-		Title:     "The Martian",
-		Author:    "Andy Weir",
-		CreatedAt: time.Now(),
-		CreatedBy: "TestInsert",
-	}
 
 	conn := NewConnection(testDbURL, "papergres_tests", SSLDisable)
 	db := conn.NewDatabase()
@@ -151,56 +220,25 @@ func TestInsert(t *testing.T) {
 	assert.Equal(t, "The Martian", martian.Title, "book title")
 	assert.Equal(t, "Andy Weir", martian.Author, "book author")
 	assert.Equal(t, "TestInsert", martian.CreatedBy, "book created by")
-	assert.Equal(t, PrimaryKey(6), martian.BookId, "bookid")
+	assert.Equal(t, PrimaryKey(6), bookid, "bookid")
 
-	// test repeat insert
-	characters := []Character{
-		Character{
-			BookId:      martian.BookId,
-			Name:        "Mark Watney",
-			Description: "Our comical hero who is stranded on Mars",
-			CreatedAt:   time.Now(),
-			CreatedBy:   "TestInsert",
-		},
-		Character{
-			BookId:      martian.BookId,
-			Name:        "Venkat Kapoor",
-			Description: "Sleep deprived MFIC at NASA",
-			CreatedAt:   time.Now(),
-			CreatedBy:   "TestInsert",
-		},
-		Character{
-			BookId:      martian.BookId,
-			Name:        "Rich Purnell",
-			Description: "A steely-eyed missle man",
-			CreatedAt:   time.Now(),
-			CreatedBy:   "TestInsert",
-		},
-		Character{
-			BookId:      martian.BookId,
-			Name:        "Mitch Henderson",
-			Description: "Sean Bean doesn't die in this movie",
-			CreatedAt:   time.Now(),
-			CreatedBy:   "TestInsert",
-		},
-	}
 	// r, err := schema().InsertAll(characters)
 	r, err := db.Schema("paper").InsertAll(characters)
 	assert.Nil(t, err, "err InsertAll")
-	assert.Equal(t, len(characters), len(r), "result length")
+	assert.Equal(t, len(characters), int(r.RowsAffected.Count), "result length")
 
-	for i, id := range r {
-		characters[i].CharacterId = id.LastInsertId.ID
-	}
+	// for i, id := range r {
+	// 	characters[i].CharacterId = id.LastInsertId.ID
+	// }
 
 	sql = "SELECT * FROM paper.character WHERE book_id = $1;"
 	var martianChars []Character
-	db.Query(sql, martian.BookId).ExecAll(&martianChars)
+	db.Query(sql, 6).ExecAll(&martianChars)
 	assert.Equal(t, len(characters), len(martianChars), "martianChars incorrect len")
 	for _, c := range martianChars {
 		found := false
 		for _, og := range characters {
-			if c.CharacterId == og.CharacterId {
+			if c.Name == og.Name {
 				found = true
 				assert.Equal(t, og.BookId, c.BookId, "book id incorrect", c.CharacterId)
 				assert.Equal(t, og.Name, c.Name, "Name incorrect", c.CharacterId)

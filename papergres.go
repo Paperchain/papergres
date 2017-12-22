@@ -459,7 +459,7 @@ func (db *Database) Insert(obj interface{}) *Result {
 // 	for i, r := range results {
 //		objs[i].Id = r.LastInsertId.ID
 //	}
-func (db *Database) InsertAll(objs interface{}) ([]*Result, error) {
+func (db *Database) InsertAll(objs interface{}) (*Result, error) {
 	return db.Schema("public").InsertAll(objs)
 }
 
@@ -491,24 +491,27 @@ func (s *Schema) GenerateInsert(obj interface{}) *Query {
 // 	for i, r := range results {
 //		objs[i].Id = r.LastInsertId.ID
 //	}
-func (s *Schema) InsertAll(objs interface{}) ([]*Result, error) {
-	slice, err := convertToSlice(objs)
-	if err != nil {
-		return nil, err
-	}
-	if len(slice) == 0 {
-		return nil, errors.New("Empty slice")
-	}
+func (s *Schema) InsertAll(objs interface{}) (*Result, error) {
+	// slice, err := convertToSlice(objs)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if len(slice) == 0 {
+	// 	return nil, errors.New("Empty slice")
+	// }
 
-	// now turn the objs into a repeat query and exec
-	return s.GenerateInsert(slice[0]).Repeat(len(slice),
-		func(i int) (dest interface{}, args []interface{}) {
-			args = insertArgs(slice[i])
-			return
-		}).Exec()
+	sql, args := insertMultipleSQL(objs, s.Name)
+	return s.Database.Query(sql, args...).ExecNonQuery(), nil
+
+	// // now turn the objs into a repeat query and exec
+	// return s.GenerateInsert(slice[0]).Repeat(len(slice),
+	// 	func(i int) (dest interface{}, args []interface{}) {
+	// 		args = insertArgs(slice[i])
+	// 		return
+	// 	}).Exec()
 }
 
-// insertFor generates insert SQL string for a given object and schema
+// insertSQL generates insert SQL string for a given object and schema
 func insertSQL(obj interface{}, schema string) string {
 	tname := goToSQLName(getTypeName(obj))
 	tname = fmt.Sprintf("%s.%s", schema, tname)
@@ -529,6 +532,44 @@ func insertSQL(obj interface{}, schema string) string {
 	sql += fmt.Sprintf("RETURNING %s as LastInsertId;", goToSQLName(primary.Name))
 
 	return sql
+}
+
+func insertMultipleSQL(entities interface{}, schema string) (string, []interface{}) {
+	slice, err := convertToSlice(entities)
+	if err != nil {
+		return "", nil
+	}
+
+	tname := goToSQLName(getTypeName(slice[0]))
+	tname = fmt.Sprintf("%s.%s", schema, tname)
+	sql := fmt.Sprintf("INSERT INTO %s (", tname)
+
+	fields, _ := prepareFields(slice[0])
+	var values string
+	for i, f := range fields {
+		sql += fmt.Sprintf("\n\t%s,", getColumnName(f))
+		values += fmt.Sprintf("\n\t$%v,", i+1)
+	}
+	sql = strings.TrimRight(sql, ",")
+	sql += "\n)\nVALUES \n"
+
+	args := make([]interface{}, len(slice)*len(fields))
+
+	counter := 0
+	for _, e := range slice {
+		fs, _ := prepareFields(e)
+		sql += fmt.Sprintf("(")
+		for _, f := range fs {
+			sql += fmt.Sprintf("$%v, ", counter+1)
+			args[counter] = f.Value
+			counter++
+		}
+		sql = strings.TrimRight(sql, ", ")
+		sql += fmt.Sprintf("),\n")
+	}
+	sql = strings.TrimRight(sql, ",\n")
+
+	return sql, args
 }
 
 func getColumnName(f *Field) string {
@@ -702,9 +743,13 @@ func execDB(q *Query, dbcmd func(*sqlx.DB, *Result) error) *Result {
 // is still basically a nonquery scripts. This is mostly inserts.
 func exec(q *Query, nonQuery bool) *Result {
 	cmd := func(db *sqlx.DB, r *Result) error {
+		meta := newMeta()
+
 		// nonquery is the easy path
 		if nonQuery {
-			_, err := db.Exec(q.SQL, q.Args...)
+			res, err := db.Exec(q.SQL, q.Args...)
+			meta.RowsAffected, _ = res.RowsAffected()
+			r.setMeta(meta)
 			return err
 		}
 
@@ -712,7 +757,7 @@ func exec(q *Query, nonQuery bool) *Result {
 		// if using exec, you don't expect to return rows so this
 		// should blow up to indicate a bad script or that the user should
 		// be using Single() or Select()
-		meta := newMeta()
+
 		err := db.Get(&meta, q.SQL, q.Args...)
 		if err != nil {
 			return err
