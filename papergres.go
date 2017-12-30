@@ -459,7 +459,7 @@ func (db *Database) Insert(obj interface{}) *Result {
 // 	for i, r := range results {
 //		objs[i].Id = r.LastInsertId.ID
 //	}
-func (db *Database) InsertAll(objs interface{}) (*Result, error) {
+func (db *Database) InsertAll(objs interface{}) ([]*Result, error) {
 	return db.Schema("public").InsertAll(objs)
 }
 
@@ -491,24 +491,24 @@ func (s *Schema) GenerateInsert(obj interface{}) *Query {
 // 	for i, r := range results {
 //		objs[i].Id = r.LastInsertId.ID
 //	}
-func (s *Schema) InsertAll(objs interface{}) (*Result, error) {
-	// slice, err := convertToSlice(objs)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// if len(slice) == 0 {
-	// 	return nil, errors.New("Empty slice")
-	// }
+func (s *Schema) InsertAll(objs interface{}) ([]*Result, error) {
+	slice, err := convertToSlice(objs)
+	if err != nil {
+		return nil, err
+	}
+	if len(slice) == 0 {
+		return nil, errors.New("Empty slice")
+	}
 
-	sql, args := insertMultipleSQL(objs, s.Name)
-	return s.Database.Query(sql, args...).ExecNonQuery(), nil
+	// sql, args := insertMultipleSQL(objs, s.Name)
+	// return s.Database.Query(sql, args...).ExecNonQuery(), nil
 
-	// // now turn the objs into a repeat query and exec
-	// return s.GenerateInsert(slice[0]).Repeat(len(slice),
-	// 	func(i int) (dest interface{}, args []interface{}) {
-	// 		args = insertArgs(slice[i])
-	// 		return
-	// 	}).Exec()
+	// now turn the objs into a repeat query and exec
+	return s.GenerateInsert(slice[0]).Repeat(len(slice),
+		func(i int) (dest interface{}, args []interface{}) {
+			args = insertArgs(slice[i])
+			return
+		}).Exec()
 }
 
 // insertSQL generates insert SQL string for a given object and schema

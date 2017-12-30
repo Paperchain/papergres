@@ -170,10 +170,10 @@ func TestCanGenerateValidInsertMultipleSql(t *testing.T) {
 
 func TestCanInsertAll(t *testing.T) {
 	setup()
-	len := 1000
+	length := 1000
 
-	books := make([]Book, len)
-	for i := 0; i < len; i++ {
+	books := make([]Book, length)
+	for i := 0; i < length; i++ {
 		books[i] = Book{
 			Author:    fmt.Sprintf("author-%d", i),
 			Title:     fmt.Sprintf("title-%d", i),
@@ -187,7 +187,8 @@ func TestCanInsertAll(t *testing.T) {
 
 	r, err := db.Schema("paper").InsertAll(books)
 	assert.Nil(t, err, "err InsertAll")
-	assert.Equal(t, len, int(r.RowsAffected.Count), "result length")
+	assert.Equal(t, length, len(r), "result length")
+	// assert.Equal(t, len, int(r.RowsAffected.Count), "result length")
 }
 
 func TestInsert(t *testing.T) {
@@ -225,11 +226,12 @@ func TestInsert(t *testing.T) {
 	// r, err := schema().InsertAll(characters)
 	r, err := db.Schema("paper").InsertAll(characters)
 	assert.Nil(t, err, "err InsertAll")
-	assert.Equal(t, len(characters), int(r.RowsAffected.Count), "result length")
+	assert.Equal(t, len(characters), len(r), "result length")
+	// assert.Equal(t, len(characters), int(r.RowsAffected.Count), "result length")
 
-	// for i, id := range r {
-	// 	characters[i].CharacterId = id.LastInsertId.ID
-	// }
+	for i, id := range r {
+		characters[i].CharacterId = id.LastInsertId.ID
+	}
 
 	sql = "SELECT * FROM paper.character WHERE book_id = $1;"
 	var martianChars []Character
