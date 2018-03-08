@@ -254,6 +254,35 @@ func TestInsert(t *testing.T) {
 	}
 }
 
+func TestCanUpdate(t *testing.T) {
+	setup()
+
+	conn := NewConnection(testDbURL, "papergres_tests", SSLDisable)
+	db := conn.NewDatabase()
+
+	res := db.Schema("paper").Insert(book)
+	if res.Err != nil {
+		log.Fatalln(res.Err.Error())
+	}
+	bookid := res.LastInsertId.ID
+
+	updateSql := "UPDATE paper.book SET Title = $1 WHERE book_id = $2"
+	b := db.Query(updateSql, "The New Martian", bookid).ExecNonQuery()
+	if b.Err != nil {
+		log.Fatalln(res.Err.Error())
+	}
+	assert.True(t, b.RowsAffected.Count == 1, "Update failed!")
+
+	var martian Book
+	selectSql := "SELECT * FROM paper.book WHERE book_id = $1"
+	qRes := db.Query(selectSql, bookid).ExecSingle(&martian)
+	if qRes.Err != nil {
+		log.Fatalln(res.Err.Error())
+	}
+
+	assert.Equal(t, "The New Martian", martian.Title, "Update failed!")
+}
+
 type testDatabase struct {
 	*Domain
 }

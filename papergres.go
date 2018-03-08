@@ -748,9 +748,12 @@ func exec(q *Query, nonQuery bool) *Result {
 		// nonquery is the easy path
 		if nonQuery {
 			res, err := db.Exec(q.SQL, q.Args...)
+			if err != nil {
+				return err
+			}
 			meta.RowsAffected, _ = res.RowsAffected()
 			r.setMeta(meta)
-			return err
+			return nil
 		}
 
 		// use get which will blow up if more than 1 row is returned.
