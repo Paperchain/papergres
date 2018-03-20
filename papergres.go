@@ -542,7 +542,7 @@ func insertSQL(obj interface{}, schema string) string {
 	sql += values
 	sql = strings.TrimRight(sql, ",")
 	sql += "\n)\n"
-	sql += fmt.Sprintf("RETURNING %s as LastInsertId;", goToSQLName(primary.Name))
+	sql += fmt.Sprintf("RETURNING %s as LastInsertId;", getColumnName(primary))
 
 	return sql
 }

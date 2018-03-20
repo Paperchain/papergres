@@ -15,7 +15,7 @@ import (
 var debug = true
 
 type Book struct {
-	BookId    PrimaryKey `db:"book_id"`
+	BookID    PrimaryKey `db:"book_id"`
 	Title     string     `db:"title"`
 	Author    string     `db:"author"`
 	CreatedAt time.Time  `db:"created_at"`
@@ -25,7 +25,7 @@ type Book struct {
 type Character struct {
 	CharacterId PrimaryKey `db:"character_id"`
 	BookId      PrimaryKey `db:"book_id"`
-	Name        string     `db:"name"`
+	NAME        string     `db:"name"`
 	Description string     `db:"description"`
 	CreatedAt   time.Time  `db:"created_at"`
 	CreatedBy   string     `db:"created_by"`
@@ -55,28 +55,28 @@ var (
 	characters = []Character{
 		Character{
 			BookId:      6,
-			Name:        "Mark Watney",
+			NAME:        "Mark Watney",
 			Description: "Our comical hero who is stranded on Mars",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},
 		Character{
 			BookId:      6,
-			Name:        "Venkat Kapoor",
+			NAME:        "Venkat Kapoor",
 			Description: "Sleep deprived MFIC at NASA",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},
 		Character{
 			BookId:      6,
-			Name:        "Rich Purnell",
+			NAME:        "Rich Purnell",
 			Description: "A steely-eyed missle man",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},
 		Character{
 			BookId:      6,
-			Name:        "Mitch Henderson",
+			NAME:        "Mitch Henderson",
 			Description: "Sean Bean doesn't die in this movie",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
@@ -241,16 +241,16 @@ func TestInsert(t *testing.T) {
 	for _, c := range martianChars {
 		found := false
 		for _, og := range characters {
-			if c.Name == og.Name {
+			if c.NAME == og.NAME {
 				found = true
 				assert.Equal(t, og.BookId, c.BookId, "book id incorrect", c.CharacterId)
-				assert.Equal(t, og.Name, c.Name, "Name incorrect", c.CharacterId)
+				assert.Equal(t, og.NAME, c.NAME, "Name incorrect", c.CharacterId)
 				assert.Equal(t, og.Description, c.Description, "Description incorrect", c.CharacterId)
 				assert.Equal(t, og.CreatedBy, c.CreatedBy, "CreatedBy incorrect", c.CharacterId)
 			}
 		}
 		if !found {
-			t.Errorf("character not found %s", c.Name)
+			t.Errorf("character not found %s", c.NAME)
 		}
 	}
 }
