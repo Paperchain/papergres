@@ -88,7 +88,7 @@ func setup() error {
 	Log = &testLogger{}
 	teardown()
 
-	db := NewConnection(testDbURL, "papergres-test", SSLDisable).NewDatabase()
+	db := NewConnection(testDbURL, "papergres-test").NewDatabase()
 	r := db.CreateDatabase()
 	if r.Err != nil {
 		fmt.Printf("failed to create database: %s", r.Err.Error())
@@ -113,7 +113,7 @@ func setup() error {
 
 func teardown() error {
 	sql := "DROP SCHEMA IF EXISTS paper CASCADE;"
-	db := NewConnection(testDbURL, "papergres-test", SSLDisable).NewDatabase()
+	db := NewConnection(testDbURL, "papergres-test").NewDatabase()
 	r := db.Query(sql).ExecNonQuery()
 	if r.Err != nil {
 		fmt.Printf("drop error: %s", r.Err.Error())
@@ -123,21 +123,22 @@ func teardown() error {
 	return nil
 }
 
-var testDbURL = "postgres://postgres:postgres@localhost:5432/paperchain"
+var testDbURL = "postgres://postgres:postgres@localhost:5432/paperchain?sslmode=disable"
 
 func TestCanCreateConnectionObjectFromDatabaseUrl(t *testing.T) {
-	dbURL := "postgres://papergresUserName:papergresPassWord@myServer:5432/myDatabase"
-	conn := NewConnection(dbURL, "papergres_tests", SSLDisable)
+	dbURL := "postgres://papergresUserName:papergresPassWord@myServer:5432/myDatabase?sslmode=disable"
+	conn := NewConnection(dbURL, "papergres_tests")
 	assert.Equal(t, "papergresUserName", conn.User, "Not equal")
 	assert.Equal(t, "papergresPassWord", conn.Password, "Not equal")
 	assert.Equal(t, "myDatabase", conn.Database, "Not equal")
 	assert.Equal(t, "myServer", conn.Host, "Not equal")
 	assert.Equal(t, "5432", conn.Port, "Not equal")
+	assert.Equal(t, SSLDisable, conn.SSLMode, "Not equal")
 }
 
 func TestCanCreateValidDatabaseObjectFromConnection(t *testing.T) {
-	dbURL := "postgres://papergresUserName:papergresPassWord@myServer:5432/myDatabase"
-	conn := NewConnection(dbURL, "papergres_tests", SSLDisable)
+	dbURL := "postgres://papergresUserName:papergresPassWord@myServer:5432/myDatabase?sslmode=disable"
+	conn := NewConnection(dbURL, "papergres_tests")
 	db := conn.NewDatabase()
 	assert.NotNil(t, db, "Nil")
 	assert.NotNil(t, db.Connection, "Nil")
@@ -147,8 +148,8 @@ func TestCanCreateValidDatabaseObjectFromConnection(t *testing.T) {
 }
 
 func TestCanCreateValidSchemaObjectFromDatbase(t *testing.T) {
-	dbURL := "postgres://papergresUserName:papergresPassWord@myServer:5432/myDatabase"
-	conn := NewConnection(dbURL, "papergres_tests", SSLDisable)
+	dbURL := "postgres://papergresUserName:papergresPassWord@myServer:5432/myDatabase?sslmode=disable"
+	conn := NewConnection(dbURL, "papergres_tests")
 	db := conn.NewDatabase()
 	schema := db.Schema("testSchema")
 	assert.NotNil(t, schema, "Nil")
@@ -182,7 +183,7 @@ func TestCanInsertAll(t *testing.T) {
 		}
 	}
 
-	conn := NewConnection(testDbURL, "papergres_tests", SSLDisable)
+	conn := NewConnection(testDbURL, "papergres_tests")
 	db := conn.NewDatabase()
 
 	r, err := db.Schema("paper").InsertAll(books)
@@ -195,7 +196,7 @@ func TestInsert(t *testing.T) {
 	setup()
 	var defaultTime time.Time
 
-	conn := NewConnection(testDbURL, "papergres_tests", SSLDisable)
+	conn := NewConnection(testDbURL, "papergres_tests")
 	db := conn.NewDatabase()
 
 	// test out single insert
@@ -257,7 +258,7 @@ func TestInsert(t *testing.T) {
 func TestCanUpdate(t *testing.T) {
 	setup()
 
-	conn := NewConnection(testDbURL, "papergres_tests", SSLDisable)
+	conn := NewConnection(testDbURL, "papergres_tests")
 	db := conn.NewDatabase()
 
 	res := db.Schema("paper").Insert(book)

@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -106,7 +107,7 @@ type Logger interface {
 }
 
 func logDebug(args ...interface{}) {
-	if Log == nil || Log.Debug == nil {
+	if Log == nil {
 		return
 	}
 
@@ -114,10 +115,6 @@ func logDebug(args ...interface{}) {
 }
 
 func logDebugf(format string, args ...interface{}) {
-	if Logger.Debugf == nil {
-		return
-	}
-
 	Log.Debug(format, args)
 }
 
@@ -180,16 +177,32 @@ const (
 )
 
 // NewConnection creates and returns the Connection object to the postgres server
-func NewConnection(databaseURL string, appName string, sslMode SSLMode) Connection {
-	regex := regexp.MustCompile(databaseURLRegex)
-	matches := regex.FindStringSubmatch(databaseURL)
+func NewConnection(databaseURL string, appName string) Connection {
+	u, err := url.Parse(databaseURL)
+	if err != nil {
+		panic(err)
+	}
+
+	host, port, _ := net.SplitHostPort(u.Host)
+	p, _ := u.User.Password()
+	q, _ := url.ParseQuery(u.RawQuery)
+	path := u.Path
+	if strings.Index(path, "/") == 0 {
+		path = path[1:]
+	}
+
+	// default
+	sslMode := SSLDisable
+	if len(q["sslmode"]) > 0 && q["sslmode"][0] != "" {
+		sslMode = SSLMode(q["sslmode"][0])
+	}
 
 	conn := Connection{
-		User:     matches[1],
-		Password: matches[2],
-		Host:     matches[3],
-		Port:     matches[4],
-		Database: matches[5],
+		User:     u.User.Username(),
+		Password: p,
+		Host:     host,
+		Port:     port,
+		Database: path,
 		AppName:  appName,
 		SSLMode:  sslMode,
 	}
