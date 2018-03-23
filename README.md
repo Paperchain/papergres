@@ -6,6 +6,7 @@ This is a wrapper around the general purpose extensions library [sqlx](https://g
 Papergres is used at [Paperchain](https://paperchain.io), built and maintained by [rahul rumalla](https://github.com/rahulrumalla). Special thanks to [Weston Dorsey](https://github.com/wdorsey), for sparking up the project. 
 
 [![GoDoc](https://godoc.org/github.com/paperchain/papergres?status.svg)](https://godoc.org/github.com/paperchain/papergres)
+[![Build Status](https://travis-ci.org/Paperchain/papergres.svg?branch=master)](https://travis-ci.org/Paperchain/papergres)
 [![Go Report Card](https://goreportcard.com/badge/github.com/paperchain/papergres)](https://goreportcard.com/report/github.com/paperchain/papergres)
 [![Dev chat at https://gitter.im/papergres/Lobby](https://img.shields.io/badge/gitter-developer_chat-46bc99.svg)](https://gitter.im/papergres/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
