@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -96,7 +97,8 @@ func setup() error {
 	}
 	Log.Infof("Database created: %s", r.String())
 
-	createScripts, err := ioutil.ReadFile(".\\scripts\\create-scripts.sql")
+	scriptsPath := "scripts" + string(os.PathSeparator) + "create-scripts.sql"
+	createScripts, err := ioutil.ReadFile(scriptsPath)
 	if err != nil {
 		fmt.Printf("failed to read create scripts file: %s", err.Error())
 		return err
