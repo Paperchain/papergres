@@ -53,28 +53,28 @@ var (
 	}
 
 	characters = []Character{
-		Character{
+		{
 			BookId:      6,
 			NAME:        "Mark Watney",
 			Description: "Our comical hero who is stranded on Mars",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},
-		Character{
+		{
 			BookId:      6,
 			NAME:        "Venkat Kapoor",
 			Description: "Sleep deprived MFIC at NASA",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},
-		Character{
+		{
 			BookId:      6,
 			NAME:        "Rich Purnell",
 			Description: "A steely-eyed missile man",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},
-		Character{
+		{
 			BookId:      6,
 			NAME:        "Mitch Henderson",
 			Description: "Sean Bean doesn't die in this movie",

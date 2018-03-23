@@ -875,7 +875,7 @@ func getLen(i interface{}) int {
 	return 0
 }
 
-// cutFirstIndex cuts the string on the first occurence of the sep.
+// cutFirstIndex cuts the string on the first occurrence of the sep.
 // cutFirstIndex("hey.o", ".") => ("hey", "o")
 // if index not found, returns (s, "")
 func cutFirstIndex(s, sep string) (first, rest string) {
