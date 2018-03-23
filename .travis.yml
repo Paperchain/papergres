@@ -1,0 +1,12 @@
+language: go
+
+# enable database services
+services:
+  - postgresql
+
+# create test database
+before_install:
+  - psql -c 'create database paperchain;' -U postgres
+
+go:
+  - tip
