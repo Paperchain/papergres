@@ -3,7 +3,11 @@ Papergres is an ultra lightweight micro-ORM written in golang for the postgres d
 
 This is a wrapper around the general purpose extensions library [sqlx](https://github.com/jmoiron/sqlx) by [jmoiron](https://github.com/jmoiron). The core postgres driver used is [pq](https://github.com/lib/pq). 
 
-Papergres is built and used at [Paperchain](https://paperchain.io). Special thanks to [Weston Dorsey(https://github.com/wdorsey), for sparking up the project. 
+Papergres is used at [Paperchain](https://paperchain.io), built and maintained by [rahul rumalla](https://github.com/rahulrumalla). Special thanks to [Weston Dorsey](https://github.com/wdorsey), for sparking up the project. 
+
+[![GoDoc](https://godoc.org/github.com/paperchain/papergres?status.svg)](https://godoc.org/github.com/paperchain/papergres)
+[![Go Report Card](https://goreportcard.com/badge/github.com/paperchain/papergres)](https://goreportcard.com/report/github.com/paperchain/papergres)
+[![Dev chat at https://gitter.im/papergres/Lobby](https://img.shields.io/badge/gitter-developer_chat-46bc99.svg)](https://gitter.im/papergres/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## Install
 `go get -u github.com/Paperchain/papergres`
