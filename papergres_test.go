@@ -23,9 +23,9 @@ type Book struct {
 }
 
 type Character struct {
-	CharacterId PrimaryKey `db:"character_id"`
-	BookId      PrimaryKey `db:"book_id"`
-	NAME        string     `db:"name"`
+	CharactedID PrimaryKey `db:"character_id"`
+	BookID      PrimaryKey `db:"book_id"`
+	Name        string     `db:"name"`
 	Description string     `db:"description"`
 	CreatedAt   time.Time  `db:"created_at"`
 	CreatedBy   string     `db:"created_by"`
@@ -54,29 +54,29 @@ var (
 
 	characters = []Character{
 		{
-			BookId:      6,
-			NAME:        "Mark Watney",
+			BookID:      6,
+			Name:        "Mark Watney",
 			Description: "Our comical hero who is stranded on Mars",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},
 		{
-			BookId:      6,
-			NAME:        "Venkat Kapoor",
+			BookID:      6,
+			Name:        "Venkat Kapoor",
 			Description: "Sleep deprived MFIC at NASA",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},
 		{
-			BookId:      6,
-			NAME:        "Rich Purnell",
+			BookID:      6,
+			Name:        "Rich Purnell",
 			Description: "A steely-eyed missile man",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},
 		{
-			BookId:      6,
-			NAME:        "Mitch Henderson",
+			BookID:      6,
+			Name:        "Mitch Henderson",
 			Description: "Sean Bean doesn't die in this movie",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
@@ -231,7 +231,7 @@ func TestInsert(t *testing.T) {
 	// assert.Equal(t, len(characters), int(r.RowsAffected.Count), "result length")
 
 	for i, id := range r {
-		characters[i].CharacterId = id.LastInsertId.ID
+		characters[i].CharactedID = id.LastInsertId.ID
 	}
 
 	sql = "SELECT * FROM paper.character WHERE book_id = $1;"
@@ -241,16 +241,16 @@ func TestInsert(t *testing.T) {
 	for _, c := range martianChars {
 		found := false
 		for _, og := range characters {
-			if c.NAME == og.NAME {
+			if c.Name == og.Name {
 				found = true
-				assert.Equal(t, og.BookId, c.BookId, "book id incorrect", c.CharacterId)
-				assert.Equal(t, og.NAME, c.NAME, "Name incorrect", c.CharacterId)
-				assert.Equal(t, og.Description, c.Description, "Description incorrect", c.CharacterId)
-				assert.Equal(t, og.CreatedBy, c.CreatedBy, "CreatedBy incorrect", c.CharacterId)
+				assert.Equal(t, og.BookID, c.BookID, "book id incorrect", c.CharactedID)
+				assert.Equal(t, og.Name, c.Name, "Name incorrect", c.CharactedID)
+				assert.Equal(t, og.Description, c.Description, "Description incorrect", c.CharactedID)
+				assert.Equal(t, og.CreatedBy, c.CreatedBy, "CreatedBy incorrect", c.CharactedID)
 			}
 		}
 		if !found {
-			t.Errorf("character not found %s", c.NAME)
+			t.Errorf("character not found %s", c.Name)
 		}
 	}
 }
@@ -267,16 +267,16 @@ func TestCanUpdate(t *testing.T) {
 	}
 	bookid := res.LastInsertId.ID
 
-	updateSql := "UPDATE paper.book SET Title = $1 WHERE book_id = $2"
-	b := db.Query(updateSql, "The New Martian", bookid).ExecNonQuery()
+	updateSQL := "UPDATE paper.book SET Title = $1 WHERE book_id = $2"
+	b := db.Query(updateSQL, "The New Martian", bookid).ExecNonQuery()
 	if b.Err != nil {
 		log.Fatalln(res.Err.Error())
 	}
 	assert.True(t, b.RowsAffected.Count == 1, "Update failed!")
 
 	var martian Book
-	selectSql := "SELECT * FROM paper.book WHERE book_id = $1"
-	qRes := db.Query(selectSql, bookid).ExecSingle(&martian)
+	selectSQL := "SELECT * FROM paper.book WHERE book_id = $1"
+	qRes := db.Query(selectSQL, bookid).ExecSingle(&martian)
 	if qRes.Err != nil {
 		log.Fatalln(res.Err.Error())
 	}
