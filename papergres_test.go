@@ -70,7 +70,7 @@ var (
 		Character{
 			BookId:      6,
 			NAME:        "Rich Purnell",
-			Description: "A steely-eyed missle man",
+			Description: "A steely-eyed missile man",
 			CreatedAt:   time.Now(),
 			CreatedBy:   "TestInsert",
 		},

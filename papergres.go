@@ -558,10 +558,8 @@ func insertMultipleSQL(entities interface{}, schema string) (string, []interface
 	sql := fmt.Sprintf("INSERT INTO %s (", tname)
 
 	fields, _ := prepareFields(slice[0])
-	var values string
-	for i, f := range fields {
+	for _, f := range fields {
 		sql += fmt.Sprintf("\n\t%s,", getColumnName(f))
-		values += fmt.Sprintf("\n\t$%v,", i+1)
 	}
 	sql = strings.TrimRight(sql, ",")
 	sql += "\n)\nVALUES \n"
@@ -877,7 +875,7 @@ func getLen(i interface{}) int {
 	return 0
 }
 
-// cutFirstIndex cuts the string on the first occurance of the sep.
+// cutFirstIndex cuts the string on the first occurence of the sep.
 // cutFirstIndex("hey.o", ".") => ("hey", "o")
 // if index not found, returns (s, "")
 func cutFirstIndex(s, sep string) (first, rest string) {
