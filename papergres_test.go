@@ -32,6 +32,52 @@ type Character struct {
 	CreatedBy   string     `db:"created_by"`
 }
 
+func TestCanPing(t *testing.T) {
+	conn := NewConnection(testDbURL, "papergres-tests")
+	err := conn.NewDatabase().Ping()
+	assert.Nil(t, err)
+}
+
+func TestCanCutFirstIndex(t *testing.T) {
+	tt := []struct {
+		name          string
+		input         string
+		separator     string
+		expectedLeft  string
+		expectedRight string
+	}{
+		{
+			"case 1",
+			"a.b",
+			".",
+			"a",
+			"b",
+		},
+		{
+			"case 2",
+			"a.b.c.d",
+			".",
+			"a",
+			"b.c.d",
+		},
+		{
+			"case 3",
+			"abcd",
+			".",
+			"abcd",
+			"",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			left, right := cutFirstIndex(tc.input, tc.separator)
+			assert.Equal(t, tc.expectedLeft, left)
+			assert.Equal(t, tc.expectedRight, right)
+		})
+	}
+}
+
 func TestSetupTeardown(t *testing.T) {
 	Log = &testLogger{}
 	err := setup()
@@ -285,45 +331,6 @@ func TestCanUpdate(t *testing.T) {
 
 	assert.Equal(t, "The New Martian", martian.Title, "Update failed!")
 }
-
-type testDatabase struct {
-	*Domain
-}
-
-// func schema() *Schema {
-// 	return defdb().Schema("paper")
-// }
-
-// func defdb() *Database {
-// 	return db(conn()).Database()
-// }
-
-// func db(c Connection) *testDatabase {
-// 	return &testDatabase{
-// 		domain(c),
-// 	}
-// }
-
-// func (db *testDatabase) GetDomain() *Domain {
-// 	return db.Domain
-// }
-
-// func domain(c Connection) *Domain {
-// 	return c.NewDatabase().NewDomain("papergres", "papergres", "paper")
-// }
-
-// func conn() Connection {
-// 	return Connection{
-// 		Database: "papergres",
-// 		User:     "postgres",
-// 		Password: "postgres",
-// 		Host:     "localhost",
-// 		Port:     "5432",
-// 		AppName:  "papergres",
-// 		Timeout:  0,
-// 		SSLMode:  "disable",
-// 	}
-// }
 
 type testLogger struct{}
 

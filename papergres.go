@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/url"
 	"reflect"
@@ -114,10 +115,6 @@ func logDebug(args ...interface{}) {
 	Log.Debug(args)
 }
 
-func logDebugf(format string, args ...interface{}) {
-	Log.Debug(format, args)
-}
-
 // Schema holds the schema to query along with the Database
 type Schema struct {
 	Name     string
@@ -172,10 +169,6 @@ func (conn Connection) NewDatabase() *Database {
 	}
 }
 
-const (
-	databaseURLRegex = "(?i)^postgres://(?:([^:@]+):([^@]*)@)?([^@/:]+):(\\d+)/(.*)$"
-)
-
 // NewConnection creates and returns the Connection object to the postgres server
 func NewConnection(databaseURL string, appName string) Connection {
 	u, err := url.Parse(databaseURL)
@@ -211,14 +204,14 @@ func NewConnection(databaseURL string, appName string) Connection {
 }
 
 // NewDomain creates a new Domain
-func (db *Database) NewDomain(name, pkg string, schema ...string) *Domain {
-	return &Domain{
-		db:     db,
-		schema: schema,
-		pkg:    pkg,
-		name:   name,
-	}
-}
+// func (db *Database) NewDomain(name, pkg string, schema ...string) *Domain {
+// 	return &Domain{
+// 		db:     db,
+// 		schema: schema,
+// 		pkg:    pkg,
+// 		name:   name,
+// 	}
+// }
 
 // NewResult returns an empty Result
 func NewResult() *Result {
@@ -227,49 +220,6 @@ func NewResult() *Result {
 		RowsAffected: RowsAffected{},
 	}
 	return result
-}
-
-// Database returns back the Database
-func (d *Domain) Database() *Database {
-	return d.db
-}
-
-// Schema returns domain schemas
-func (d *Domain) Schema() []string {
-	return d.schema
-}
-
-// Package returns the domain package
-func (d *Domain) Package() string {
-	return d.pkg
-}
-
-// Name returns the domain name
-func (d *Domain) Name() string {
-	return d.name
-}
-
-// Namespace is the fully qualified name of a Domain
-func (d *Domain) Namespace() string {
-	s := fmt.Sprintf("%s.%s.", d.name, d.pkg)
-	for _, schema := range d.schema {
-		s += schema + "_"
-	}
-	s = strings.TrimRight(s, "_")
-	return s
-}
-
-func (d *Domain) String() string {
-	return fmt.Sprintf(`
-  Name... %s
-  Package %s
-  Schema
-  	%s
-  Database %s`,
-		d.Name(),
-		d.Package(),
-		strings.Join(d.Schema(), "\n\t"),
-		prettifyConnString(d.db.ConnectionString()))
 }
 
 func (q *Query) String() string {
@@ -354,14 +304,10 @@ func Reset() {
 // Shutdown performs a graceful shutdown of all DBs
 func Shutdown() {
 	for _, db := range openDBs {
-		db.Close()
+		if err := db.Close(); err != nil {
+			log.Fatalf("Error shutting down DB: %s", err.Error())
+		}
 	}
-}
-
-// SetConnection will set the connection to the passed in value
-func (db *Database) SetConnection(c Connection) {
-	db.conn = &c
-	db.connString = ""
 }
 
 // CreateDatabase creates a default database
@@ -385,13 +331,9 @@ CREATE DATABASE %s
 
 	conn := db.Connection()
 	conn.Database = ""
-	db.SetConnection(conn)
+	db.conn = &conn
+	db.connString = ""
 	return db.Query(sql).ExecNonQuery()
-}
-
-// Ping tests the database connection
-func (d *Domain) Ping() error {
-	return d.Database().Ping()
 }
 
 // Ping tests the database connection
@@ -402,17 +344,6 @@ func (db *Database) Ping() error {
 // Stats returns DBStats. Right now this only returns OpenConnections
 func (db *Database) Stats() sql.DBStats {
 	return open(db.ConnectionString()).Stats()
-}
-
-// IsLocal determines if a database host URL is local
-func IsLocal(hostURL string, localURLs ...string) bool {
-	for _, u := range localURLs {
-		if strings.Contains(strings.ToLower(hostURL), u) {
-			return true
-		}
-	}
-	return strings.Contains(strings.ToLower(hostURL), "localhost") ||
-		strings.Contains(strings.ToLower(hostURL), "127.0.0.1")
 }
 
 // Schema allows for certain operations that require a specific schema
