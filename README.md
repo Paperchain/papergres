@@ -19,6 +19,22 @@ Full API documentation can be found on [godoc](https://godoc.org/github.com/Pape
 ## Contributors
 We're open to and looking for open-source contributors to help make this library more robust
 
+## Building & Testing
+Fetch the dependencies using dep
+```bash
+dep ensure
+```
+
+Build using the go cmd
+```bash
+go build
+```
+
+Test everything!
+```bash
+go test -v ./...
+```
+
 ## Usage
 The simplest way to execute a query returning a single object is
 ```go
