@@ -35,7 +35,7 @@ var (
 )
 
 // PrimaryKey is the type used for primary keys
-type PrimaryKey uint64
+type PrimaryKey interface{}
 
 // Database contains all required database attributes
 // Use papergres.New() to create a Database
@@ -261,7 +261,7 @@ func (r *Result) String() string {
 	}
 	var lid, ra string
 	if r.LastInsertId.Err == nil {
-		lid = r.LastInsertId.ID.String()
+		lid = fmt.Sprintf("%v", r.LastInsertId.ID)
 	} else {
 		lid = r.LastInsertId.Err.Error()
 	}
@@ -280,11 +280,6 @@ Error: %v
 `,
 		lid, ra, r.RowsReturned,
 		r.ExecutionTime, r.Err)
-}
-
-func (i PrimaryKey) String() string {
-	base := int64(i)
-	return strconv.FormatInt(base, 10)
 }
 
 func init() {
