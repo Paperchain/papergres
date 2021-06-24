@@ -5,6 +5,7 @@ package papergres
 import (
 	"errors"
 	"reflect"
+	"strconv"
 )
 
 // GetTypeName gets the type name of an object
@@ -45,12 +46,14 @@ func convertToSlice(v interface{}) ([]interface{}, error) {
 	return s, nil
 }
 
-// Field is a struct field
+// Field is a struct field that represents a single entity of an object.
+// To set a field as primary add `db_pk:true` to tag.
 type Field struct {
-	Typeof string
-	Name   string
-	Tag    string
-	Value  interface{}
+	Value     interface{}
+	Typeof    string
+	Name      string
+	Tag       string
+	IsPrimary bool
 }
 
 // Fields returns a struct's fields and their values
@@ -64,13 +67,19 @@ func fields(v interface{}) []*Field {
 
 	fields := make([]*Field, val.NumField())
 	vtype := val.Type()
+
 	for i := 0; i < val.NumField(); i++ {
 		f := val.Field(i)
+
+		// Get primary key value from db_pk tag
+		isPrimary, _ := strconv.ParseBool(vtype.Field(i).Tag.Get("db_pk"))
+
 		field := &Field{
-			Typeof: getTypeName(f.Interface()),
-			Name:   vtype.Field(i).Name,
-			Value:  f.Interface(),
-			Tag:    vtype.Field(i).Tag.Get("db"),
+			Value:     f.Interface(),
+			Typeof:    getTypeName(f.Interface()),
+			Name:      vtype.Field(i).Name,
+			Tag:       vtype.Field(i).Tag.Get("db"),
+			IsPrimary: isPrimary,
 		}
 		fields[i] = field
 	}
