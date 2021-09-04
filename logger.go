@@ -22,14 +22,14 @@ func logDebug(args ...interface{}) {
 	if Log == nil {
 		return
 	}
-
 	Log.Debug(args)
 }
 
 // logQuery debugs out a query and a result.
 func logQuery(q *Query, res *Result, start time.Time, logArgs ...interface{}) {
-	res.ExecutionTime = time.Now().Sub(start)
+	res.ExecutionTime = time.Since(start)
 
+	// Prepare output
 	l := fmt.Sprintf("\n== POSTGRES QUERY ==%s\n== RESULT ==%s",
 		q.String(), res.String())
 

@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	errNoDriver        = errors.New("No database driver loaded")
-	errMultipleDrivers = errors.New("More than 1 data driver loaded")
-	errUnableToOpenDB  = errors.New("Unable to open sql database")
+	errNoDriver        = errors.New("no database driver loaded")
+	errMultipleDrivers = errors.New("more than 1 data driver loaded")
+	errUnableToOpenDB  = errors.New("unable to open sql database")
 
 	sqlDriver string
 
@@ -21,58 +21,7 @@ var (
 	openDBs map[string]*sqlx.DB
 )
 
-// Domain a database schema and the package that uses it.
-// It provides the default DomainOwner implementation.
-type Domain struct {
-	// db is the Database
-	db *Database
-
-	// schema is the database schema, database.[schema].table
-	schema []string
-
-	// pkg is the package that is in charge of the domain
-	pkg string
-
-	// name of the domain
-	name string
-}
-
-// DomainOwner is an application that is in charge of a database domain
-type DomainOwner interface {
-	// Database returns back the Database of the domain
-	Database() *Database
-
-	// Schema returns back schema of the domain
-	Schema() []string
-
-	// Package returns back the package that owns the domain
-	Package() string
-
-	// Name returns the name of the domain
-	Name() string
-
-	// Namespace returns the full namespace of the domain
-	Namespace() string
-
-	// String returns the string representation of the DomainOwner
-	String() string
-}
-
-// Generator defines behavior needed to create a database
-type Generator interface {
-	// DomainOwner a generator must be a DomainOwner
-	DomainOwner
-
-	// DropSchema will drop all schema
-	DropSchema() *Result
-
-	// CreateSchema will create all schema
-	CreateSchema() *Result
-
-	// CreateMockData generates and inserts test data
-	CreateMockData() *Result
-}
-
+// the first thing to get called
 func init() {
 	Reset()
 }
@@ -96,6 +45,7 @@ func Shutdown() {
 	}
 }
 
+// open returns a new open connection to DB and adds it to connection pool.
 func open(conn string) *sqlx.DB {
 	if db, ok := openDBs[conn]; ok {
 		return db
@@ -110,6 +60,7 @@ func open(conn string) *sqlx.DB {
 	return db
 }
 
+// getDriver returns a registered driver to connect to db
 func getDriver() string {
 	if sqlDriver != "" {
 		return sqlDriver
