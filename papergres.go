@@ -7,7 +7,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 
@@ -86,14 +85,6 @@ type Generator interface {
 type Schema struct {
 	Name     string
 	Database *Database
-}
-
-// Repeat holds the iteration count and params function
-// for executing a query N times.
-type Repeat struct {
-	Query    *Query
-	ParamsFn SelectParamsFn
-	N        int
 }
 
 // Result holds the results of an executed query
@@ -349,53 +340,6 @@ func prepareFields(obj interface{}, withPK bool) (nfields []*Field, primary *Fie
 		nfields = append(nfields, f)
 	}
 	return
-}
-
-// Exec executes the repeat query command. Internally this will prepare the statement
-// with the database and then create go routines to execute each statement.
-func (r *Repeat) Exec() ([]*Result, error) {
-	db := open(r.Query.Database.ConnectionString())
-	stmt, err := db.Preparex(r.Query.SQL)
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	// set up and exec work in go routines managed by a semaphore
-	results := make([]*Result, r.N)
-	errs := []error{}
-	wg := sync.WaitGroup{}
-	for i := 0; i < r.N; i++ {
-		wg.Add(1)
-		func(i int) { //use go routines here --> go func(i int){} --> commented this here deliberately as we see an error on "too many clients open"
-			defer wg.Done()
-
-			dest, args := r.ParamsFn(i)
-			// create a new query for each iteration since the args change
-			qs := r.Query.Database.Query(r.Query.SQL, args...)
-
-			cmd := func(result *Result) error {
-				if r.Query.insert {
-					meta := newMeta()
-					err := stmt.Get(&meta, qs.Args...)
-					result.setMeta(meta)
-					return err
-				}
-				err := stmt.Select(dest, qs.Args...)
-				result.RowsReturned = getLen(dest)
-				return err
-			}
-
-			result := execCommand(qs, cmd, fmt.Sprintf("Repeat Index: %v / %v", i+1, r.N))
-			results[i] = result
-			if result.Err != nil {
-				errs = append(errs, result.Err)
-			}
-		}(i)
-	}
-	wg.Wait()
-
-	return results, mergeErrs(errs)
 }
 
 type meta struct {
