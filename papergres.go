@@ -17,9 +17,6 @@ import (
 )
 
 var (
-	// Log is the way to log the scripting activity happening from the library to the database
-	Log Logger
-
 	errNoDriver        = errors.New("No database driver loaded")
 	errMultipleDrivers = errors.New("More than 1 data driver loaded")
 	errUnableToOpenDB  = errors.New("Unable to open sql database")
@@ -84,22 +81,6 @@ type Generator interface {
 
 	// CreateMockData generates and inserts test data
 	CreateMockData() *Result
-}
-
-// Logger is the required interface for the papergres logger
-type Logger interface {
-	Info(args ...interface{})
-	Infof(format string, args ...interface{})
-	Debug(args ...interface{})
-	Debugf(format string, args ...interface{})
-}
-
-func logDebug(args ...interface{}) {
-	if Log == nil {
-		return
-	}
-
-	Log.Debug(args)
 }
 
 // Schema holds the schema to query along with the Database
@@ -564,23 +545,6 @@ func getDriver() string {
 
 	sqlDriver = drivers[0]
 	return sqlDriver
-}
-
-// logQuery debugs out a query and a result.
-func logQuery(q *Query, res *Result, start time.Time, logArgs ...interface{}) {
-	res.ExecutionTime = time.Now().Sub(start)
-
-	l := fmt.Sprintf("\n== POSTGRES QUERY ==%s\n== RESULT ==%s",
-		q.String(), res.String())
-
-	if len(logArgs) >= 1 {
-		l += "== ADDITIONAL INFO ==\n"
-		for _, a := range logArgs {
-			l += fmt.Sprintf("%v\n", a)
-		}
-	}
-
-	logDebug(l)
 }
 
 func mergeErrs(errs []error) error {
