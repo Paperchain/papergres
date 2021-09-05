@@ -1,9 +1,11 @@
 # Papergres
-Papergres is an ultra lightweight micro-ORM written in golang for the postgres database server. The library provides easy ways to execute queries, insert data and sql logging. 
 
-This is a wrapper around the general purpose extensions library [sqlx](https://github.com/jmoiron/sqlx) by [jmoiron](https://github.com/jmoiron). The core postgres driver used is [pq](https://github.com/lib/pq). 
+Papergres is an ultra lightweight micro-ORM written in golang for the postgres database server. The library provides easy ways to execute queries, insert data and sql logging.
 
-Papergres is used at [Paperchain](https://paperchain.io), built and maintained by [rahul rumalla](https://github.com/rahulrumalla). Special thanks to [Weston Dorsey](https://github.com/wdorsey), for sparking up the project. 
+This is a wrapper around the general purpose extensions library [sqlx](https://github.com/jmoiron/sqlx) by [jmoiron](https://github.com/jmoiron). The core postgres driver used is [pq](https://github.com/lib/pq).
+
+Papergres is used at [Paperchain](https://paperchain.io), built and maintained
+by the team.
 
 [![GoDoc](https://godoc.org/github.com/paperchain/papergres?status.svg)](https://godoc.org/github.com/paperchain/papergres)
 [![Build Status](https://travis-ci.org/Paperchain/papergres.svg?branch=master)](https://travis-ci.org/Paperchain/papergres)
@@ -11,32 +13,39 @@ Papergres is used at [Paperchain](https://paperchain.io), built and maintained b
 [![Dev chat at https://gitter.im/papergres/Lobby](https://img.shields.io/badge/gitter-developer_chat-46bc99.svg)](https://gitter.im/papergres/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## Install
+
 `go get -u github.com/Paperchain/papergres`
 
-## API Documentation 
+## API Documentation
+
 Full API documentation can be found on [godoc](https://godoc.org/github.com/Paperchain/papergres)
 
-## Contributors
-We're open to and looking for open-source contributors to help make this library more robust
+### Backwards Compatibility
+
+Compatibility with the most recent two versions of Go is a requirement for any
+new changes. Compatibility beyond that is not guaranteed.
+
+Versioning is done with Go modules. Breaking changes (eg. removing deprecated
+API) will get major version number bumps.
 
 ## Building & Testing
-Fetch the dependencies using dep
-```bash
-dep ensure
-```
 
 Build using the go cmd
+
 ```bash
 go build
 ```
 
 Test everything!
+
 ```bash
 go test -v ./...
 ```
 
 ## Usage
+
 The simplest way to execute a query returning a single object is
+
 ```go
 // Set up your connection object
 conn := NewConnection("postgres://postgres:postgres@localhost:5432/paperchain", "papergres_tests", SSLDisable)
@@ -48,12 +57,14 @@ res := db.Query("SELECT * FROM paper.book WHERE book_id = $1 LIMIT 1;", 777).Exe
 ```
 
 To retrieve a list of rows and hydrate it into a list of object
+
 ```go
-var books []book
+var books []Book
 res := db.Query("SELECT * FROM paper.book WHERE book_id > 10 LIMIT 1;", 777).ExecAll(&books)
 ```
 
 To insert a record into a table
+
 ```go
 // Create a struct and specify database column names via the "db" struct tag
 type Book struct {
@@ -77,7 +88,7 @@ res := db.Insert(book)
 if res.Err != nil {
 		log.Fatalln(res.Err.Error())
 }
-    
+
 // Retrieve the inserted ID from the primary key
 bookid := res.LastInsertId.ID
 
@@ -89,9 +100,25 @@ res := schema.Insert(book)
 res, err := schema.InsertAll(books)
 ```
 
-## Logging
-The library provides an logging interface that needs to implemented
+To search for records using the IN query clause (make sure to use `?` bind variable in sql query)
 
+```go
+var books []Book
+var authors = []string{"Issac Asimov", "H. G. Wells", "Arther C. Clarke"}
+res := db.Query("SELECT * FROM paper.book WHERE author IN (?);", authors).ExecAllIn(&books)
+```
+
+Additionally, one can always use the `ExecNonQuery` method to make any sql query - insert,
+update and select.
+
+```go
+query := `UPDATE paper.book SET title=$1 WHERE book_id = $2;`
+res := db.Query(query, "I, Robot", 42).ExecNonQuery()
+```
+
+## Logging
+
+The library provides an logging interface that needs to be implemented
 
 ```go
 // Instantiate your logged in your application's bootstrap
@@ -130,7 +157,8 @@ func (t *testLogger) Debugf(format string, args ...interface{}) {
 }
 ```
 
-Example of the sql logging 
+Example of the sql logging
+
 ```
 == POSTGRES QUERY ==
         Query:
@@ -197,3 +225,9 @@ RowsReturned:  4
 ExecutionTime: 5.549ms
 Error: <nil>
 ```
+
+## Contribution
+
+Feel free to file issues and raise a PR.
+
+Happy Programming!
