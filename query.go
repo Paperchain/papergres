@@ -39,6 +39,32 @@ func (q *Query) ExecAll(dest interface{}) *Result {
 	return execDB(q, all)
 }
 
+// ExecAllIn works with IN queries. It will take a slice of values and
+// attach the slice to the query as a list of values.
+// One key difference with bindvar used for IN query is a `?` (question mark)
+// the query then has to be rebinded to change default bindvar to target bindvar
+// like `$1` (dollar sign followed by a number) for postgres etc.
+func (q *Query) ExecAllIn(dest interface{}) *Result {
+	all := func(db *sqlx.DB, r *Result) error {
+		query, args, err := sqlx.In(q.SQL, q.Args...)
+		if err != nil {
+			return err
+		}
+
+		// Rebind the query to replace the ? with $1, $2, etc
+		query = db.Rebind(query)
+
+		// Execute a select query using this DB
+		err = db.Select(dest, query, args...)
+
+		r.RowsReturned = getLen(dest)
+
+		return err
+	}
+
+	return execDB(q, all)
+}
+
 // ExecNonQuery runs the SQL and doesn't look for any results
 func (q *Query) ExecNonQuery() *Result {
 	return exec(q, true)
