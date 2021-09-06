@@ -705,8 +705,14 @@ func exec(q *Query, nonQuery bool) *Result {
 			if err != nil {
 				return err
 			}
-			meta.LastInsertId, _ = res.LastInsertId()
-			meta.RowsAffected, _ = res.RowsAffected()
+			meta.LastInsertId, err = res.LastInsertId()
+			if err != nil {
+				return err
+			}
+			meta.RowsAffected, err = res.RowsAffected()
+			if err != nil {
+				return err
+			}
 			r.setMeta(meta)
 			return nil
 		}
