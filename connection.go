@@ -72,7 +72,8 @@ func NewConnection(databaseURL string, appName string) Connection {
 	return conn
 }
 
-// String will build a connection string given database Connection settings
+// String method builds a DSN(Data Source Name) connection string based on the
+// given database connection settings and returns it.
 func (conn *Connection) String() string {
 	var s string
 	if conn.Database != "" {

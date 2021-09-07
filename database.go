@@ -6,12 +6,11 @@ import (
 )
 
 // Database contains all required database attributes
-// Use papergres.New() to create a Database
 type Database struct {
-	// conn is all information needed to connect to the database
+	// conn is all information needed to connect to the database.
 	conn *Connection
 
-	// connString is the cached database connection string
+	// connString referes to the DSN string for the current DB.
 	connString string
 }
 
@@ -20,7 +19,8 @@ func (db *Database) Connection() Connection {
 	return *db.conn
 }
 
-// ConnectionString will build a connection string given database Connection settings
+// ConnectionString returns the DSN(Data Source Name) connection string for the
+// current DB connection.
 func (db *Database) ConnectionString() string {
 	if db.connString != "" {
 		return db.connString

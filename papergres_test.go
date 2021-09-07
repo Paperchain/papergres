@@ -166,6 +166,12 @@ func TestCanCreateValidSchemaObjectFromDatbase(t *testing.T) {
 
 func TestCanGenerateValidInsertSql(t *testing.T) {
 	// setup()
+	book := &Book{
+		Title:     "The Martian",
+		Author:    "Andy Weir",
+		CreatedAt: time.Now(),
+		CreatedBy: "TestInsert",
+	}
 	sql := insertSQL(book, "paper", false)
 	fmt.Println(sql)
 }

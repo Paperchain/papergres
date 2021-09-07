@@ -72,7 +72,7 @@ func (q *Query) ExecNonQuery() *Result {
 
 // ExecSingle fetches a single row from the database and puts it into dest.
 // If more than 1 row is returned it takes the first one.
-// Expects at least 1 row or it will error.
+// Expects at least 1 row or it will return an error.
 func (q *Query) ExecSingle(dest interface{}) *Result {
 	single := func(db *sqlx.DB, r *Result) error {
 		err := db.Get(dest, q.SQL, q.Args...)
