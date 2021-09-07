@@ -6,6 +6,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// function type for executional Command
+type execCmd func(*Result) error
+
+// function type for a sqlx database command
+type dbCmd func(*sqlx.DB, *Result) error
+
 // Exec executes an ad-hoc query against a connection.
 // This is only recommended for use if you have a weird case where you need to
 // modify the connection string just for this query, like when creating
@@ -24,7 +30,7 @@ func ExecNonQuery(sql string, conn Connection, args ...interface{}) *Result {
 
 // execCommand is the single location that runs a command against the database (with the exception
 // of prepare statements).
-func execCommand(q *Query, cmd func(*Result) error, logArgs ...interface{}) *Result {
+func execCommand(q *Query, cmd execCmd, logArgs ...interface{}) *Result {
 	r := NewResult()
 
 	defer logQuery(q, r, time.Now(), logArgs...)
@@ -34,7 +40,7 @@ func execCommand(q *Query, cmd func(*Result) error, logArgs ...interface{}) *Res
 }
 
 // execDB creates the database for a command before passing it on to the execCommand function
-func execDB(q *Query, dbcmd func(*sqlx.DB, *Result) error) *Result {
+func execDB(q *Query, dbcmd dbCmd) *Result {
 	return execCommand(q, func(r *Result) error {
 		return dbcmd(open(q.Database.ConnectionString()), r)
 	})
@@ -75,7 +81,6 @@ func exec(q *Query, nonQuery bool) *Result {
 		}
 
 		r.setMeta(meta)
-
 		return nil
 	}
 

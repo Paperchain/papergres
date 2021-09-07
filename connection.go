@@ -53,12 +53,10 @@ func NewConnection(databaseURL string, appName string) Connection {
 		path = path[1:]
 	}
 
-	// default
-	sslMode := SSLDisable
-	if len(q["sslmode"]) > 0 && q["sslmode"][0] != "" {
-		sslMode = SSLMode(q["sslmode"][0])
-	}
+	// Set sslmode
+	sslMode := setSSLMode(q)
 
+	// Build the Connection object
 	conn := Connection{
 		User:     u.User.Username(),
 		Password: p,
@@ -115,6 +113,17 @@ func (conn Connection) NewDatabase() *Database {
 	return &Database{
 		conn: &conn,
 	}
+}
+
+// function to set SSL mode for connection based on url.Values
+func setSSLMode(q url.Values) SSLMode {
+	sslMode := SSLDisable
+
+	if len(q["sslmode"]) > 0 && q["sslmode"][0] != "" {
+		sslMode = SSLMode(q["sslmode"][0])
+	}
+
+	return sslMode
 }
 
 // prettifyConnString prints out all the props from connection string in a neat
