@@ -407,20 +407,31 @@ func (db *Database) GenerateInsert(obj interface{}) *Query {
 	return db.Schema("public").GenerateInsert(obj)
 }
 
-// Insert inserts the passed in object
+// Insert inserts the passed in object in DB.
+//
+// NOTE: It does not account for client side generated value for a
+// primary key and expects that the logic for populating value
+// of primary key should reside in the database as sequence.
+//
+// DO NOT use Insert() if you wish to populate a client side generated
+// value in primary key, use InsertWithPK() instead.
 func (s *Schema) Insert(obj interface{}) *Result {
-	sql := insertSQL(obj, s.Name)
-	args := insertArgs(obj)
+	sql := insertSQL(obj, s.Name, false)
+	args := insertArgs(obj, false)
 	return s.Database.Query(sql, args...).Exec()
 }
 
-// GenerateInsert generates the insert query for the given object
-func (s *Schema) GenerateInsert(obj interface{}) *Query {
-	sql := insertSQL(obj, s.Name)
-	args := insertArgs(obj)
-	q := s.Database.Query(sql, args...)
-	q.insert = true
-	return q
+// InsertWithPK performs inserts on objects and persists the Primary key value
+// to DB as well. It will fail to insert duplicate values to DB.
+//
+// NOTE: Proceed with caution!
+// Only use this method you wish to persist a client side generated value in
+// Primary key and  don't rely on database sequenece to autogenerate
+// PrimaryKey values.
+func (s *Schema) InsertWithPK(obj interface{}) *Result {
+	sql := insertSQL(obj, s.Name, true)
+	args := insertArgs(obj, true)
+	return s.Database.Query(sql, args...).ExecNonQuery()
 }
 
 // InsertAll inserts a slice of objects concurrently.
@@ -436,89 +447,90 @@ func (s *Schema) InsertAll(objs interface{}) ([]*Result, error) {
 		return nil, err
 	}
 	if len(slice) == 0 {
-		return nil, errors.New("Empty slice")
+		return nil, errors.New("empty slice")
 	}
-
-	// sql, args := insertMultipleSQL(objs, s.Name)
-	// return s.Database.Query(sql, args...).ExecNonQuery(), nil
 
 	// now turn the objs into a repeat query and exec
 	return s.GenerateInsert(slice[0]).Repeat(len(slice),
 		func(i int) (dest interface{}, args []interface{}) {
-			args = insertArgs(slice[i])
+			args = insertArgs(slice[i], false)
 			return
 		}).Exec()
 }
 
+// GenerateInsert generates the insert query for the given object
+func (s *Schema) GenerateInsert(obj interface{}) *Query {
+	return s.generateInsertQuery(obj, false)
+}
+
+// GenerateInsertWithPK generates the insert query for the given object in which
+// PrimaryKey value is also supposed to be populated during insert.
+func (s *Schema) GenerateInsertWithPK(obj interface{}) *Query {
+	return s.generateInsertQuery(obj, true)
+}
+
+// generateInsertQuery constructs an insert query for the given object
+func (s *Schema) generateInsertQuery(obj interface{}, withPK bool) *Query {
+	sql := insertSQL(obj, s.Name, withPK)
+	args := insertArgs(obj, withPK)
+	q := s.Database.Query(sql, args...)
+	q.insert = true
+	return q
+}
+
 // insertSQL generates insert SQL string for a given object and schema
-func insertSQL(obj interface{}, schema string) string {
+func insertSQL(obj interface{}, schema string, withPK bool) string {
+	// Construct the table name prefixed with schema name
 	tname := goToSQLName(getTypeName(obj))
 	tname = fmt.Sprintf("%s.%s", schema, tname)
+
+	// Construct the first component of insert statement
 	sql := fmt.Sprintf("INSERT INTO %s (", tname)
 
-	fields, primary := prepareFields(obj)
+	// NOTE: An object is represented as a slice of Fields, where each Field
+	// represents a column.
+	// Get list of columns to populate.
+	fields, primary := prepareFields(obj, withPK)
+
+	// Based on the number of columns, create value placeholders
 	var values string
 	for i, f := range fields {
 		sql += fmt.Sprintf("\n\t%s,", getColumnName(f))
 		values += fmt.Sprintf("\n\t$%v,", i+1)
 	}
 
+	// Add source data placeholders
+	// something like this: `VALUES ($1, $2, $3, $4, $5, $6)`
 	sql = strings.TrimRight(sql, ",")
 	sql += "\n)\nVALUES ("
 	sql += values
 	sql = strings.TrimRight(sql, ",")
 	sql += "\n)\n"
+
+	// Add last line to capture primary key
 	sql += fmt.Sprintf("RETURNING %s as LastInsertId;", getColumnName(primary))
 
 	return sql
 }
 
-func insertMultipleSQL(entities interface{}, schema string) (string, []interface{}) {
-	slice, err := convertToSlice(entities)
-	if err != nil {
-		return "", nil
-	}
-
-	tname := goToSQLName(getTypeName(slice[0]))
-	tname = fmt.Sprintf("%s.%s", schema, tname)
-	sql := fmt.Sprintf("INSERT INTO %s (", tname)
-
-	fields, _ := prepareFields(slice[0])
-	for _, f := range fields {
-		sql += fmt.Sprintf("\n\t%s,", getColumnName(f))
-	}
-	sql = strings.TrimRight(sql, ",")
-	sql += "\n)\nVALUES \n"
-
-	args := make([]interface{}, len(slice)*len(fields))
-
-	counter := 0
-	for _, e := range slice {
-		fs, _ := prepareFields(e)
-		sql += fmt.Sprintf("(")
-		for _, f := range fs {
-			sql += fmt.Sprintf("$%v, ", counter+1)
-			args[counter] = f.Value
-			counter++
-		}
-		sql = strings.TrimRight(sql, ", ")
-		sql += fmt.Sprintf("),\n")
-	}
-	sql = strings.TrimRight(sql, ",\n")
-
-	return sql, args
-}
-
+// getColumnName returns a Field's associated Tag name if it is supplied.
+// Else, it constructs a snake_case value from Field.Name value and returns it.
+// Example:
+// For a Field with `Name` as 'TransactionSource' if `db: transaction_source` is
+// present in Tag then it'll be used else it'll be constructed.
 func getColumnName(f *Field) string {
 	var columnName string
 	if f.Tag != "" {
 		columnName = f.Tag
-	} else {
-		columnName = goToSQLName(f.Name)
+		return columnName
 	}
+
+	columnName = goToSQLName(f.Name)
 	return columnName
 }
 
+// goToSQLName converts a string from camel case to snake case
+// e.g. TransactionSource to transaction_source
 func goToSQLName(name string) string {
 	var s string
 	for _, c := range name {
@@ -533,8 +545,8 @@ func goToSQLName(name string) string {
 }
 
 // insertArgs creates the insert arg slice for an object
-func insertArgs(obj interface{}) []interface{} {
-	final, _ := prepareFields(obj)
+func insertArgs(obj interface{}, withPK bool) []interface{} {
+	final, _ := prepareFields(obj, withPK)
 	args := make([]interface{}, len(final))
 	for i, f := range final {
 		args[i] = f.Value
@@ -542,13 +554,18 @@ func insertArgs(obj interface{}) []interface{} {
 	return args
 }
 
-// prepareFields performs necessary transformations for the insert statement
-func prepareFields(obj interface{}) (nfields []*Field, primary *Field) {
+// prepareFields performs necessary transformations for the insert statement.
+// If `withPK` is false: It does not account a primary key Field to list of
+// fields to append, else, primary key is also considered.
+func prepareFields(obj interface{}, withPK bool) (nfields []*Field, primary *Field) {
 	fields := fields(obj)
-	for i, f := range fields {
-		if i == 0 {
+	for _, f := range fields {
+
+		if f.IsPrimary {
 			primary = f
-			continue
+			if !withPK {
+				continue
+			}
 		}
 		nfields = append(nfields, f)
 	}
@@ -688,7 +705,14 @@ func exec(q *Query, nonQuery bool) *Result {
 			if err != nil {
 				return err
 			}
-			meta.RowsAffected, _ = res.RowsAffected()
+			meta.LastInsertId, err = res.LastInsertId()
+			if err != nil {
+				return err
+			}
+			meta.RowsAffected, err = res.RowsAffected()
+			if err != nil {
+				return err
+			}
 			r.setMeta(meta)
 			return nil
 		}
@@ -724,10 +748,10 @@ func (r *Result) setMeta(m meta) {
 	r.LastInsertId.ID = m.LastInsertId
 	r.RowsAffected.Count = m.RowsAffected
 	if m.LastInsertId == 0 {
-		r.LastInsertId.Err = errors.New("No LastInsertId returned")
+		r.LastInsertId.Err = errors.New("no LastInsertId returned")
 	}
 	if m.RowsAffected == -1 {
-		r.RowsAffected.Err = errors.New("No RowsAffected returned")
+		r.RowsAffected.Err = errors.New("no RowsAffected returned")
 	}
 }
 
@@ -799,17 +823,6 @@ func getLen(i interface{}) int {
 		return val.Len()
 	}
 	return 0
-}
-
-// cutFirstIndex cuts the string on the first occurrence of the sep.
-// cutFirstIndex("hey.o", ".") => ("hey", "o")
-// if index not found, returns (s, "")
-func cutFirstIndex(s, sep string) (first, rest string) {
-	idx := strings.Index(s, sep)
-	if idx == -1 {
-		return s, ""
-	}
-	return s[:idx], s[idx+1:]
 }
 
 /* --- Start Connection String Functionality --- */
