@@ -38,46 +38,6 @@ func TestCanPing(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestCanCutFirstIndex(t *testing.T) {
-	tt := []struct {
-		name          string
-		input         string
-		separator     string
-		expectedLeft  string
-		expectedRight string
-	}{
-		{
-			"case 1",
-			"a.b",
-			".",
-			"a",
-			"b",
-		},
-		{
-			"case 2",
-			"a.b.c.d",
-			".",
-			"a",
-			"b.c.d",
-		},
-		{
-			"case 3",
-			"abcd",
-			".",
-			"abcd",
-			"",
-		},
-	}
-
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			left, right := cutFirstIndex(tc.input, tc.separator)
-			assert.Equal(t, tc.expectedLeft, left)
-			assert.Equal(t, tc.expectedRight, right)
-		})
-	}
-}
-
 func TestSetupTeardown(t *testing.T) {
 	Log = &testLogger{}
 	err := setup()
@@ -206,15 +166,14 @@ func TestCanCreateValidSchemaObjectFromDatbase(t *testing.T) {
 
 func TestCanGenerateValidInsertSql(t *testing.T) {
 	// setup()
-	sql := insertSQL(book, "paper")
+	book := &Book{
+		Title:     "The Martian",
+		Author:    "Andy Weir",
+		CreatedAt: time.Now(),
+		CreatedBy: "TestInsert",
+	}
+	sql := insertSQL(book, "paper", false)
 	fmt.Println(sql)
-}
-
-func TestCanGenerateValidInsertMultipleSql(t *testing.T) {
-	// setup()
-	sql, args := insertMultipleSQL(characters, "paper")
-	fmt.Println(sql)
-	fmt.Printf("%+v\n", args)
 }
 
 func TestCanInsertAll(t *testing.T) {
